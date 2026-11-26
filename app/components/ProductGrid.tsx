@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Search,
   SlidersHorizontal,
@@ -13,10 +14,8 @@ import {
   IndianRupee,
   Check,
 } from "lucide-react";
-
 import ProductCard from "./ProductCard";
 import CategoryFilter from "./CategoryFilter";
-
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -35,132 +34,77 @@ const CONDITIONS = ["All", "Like New", "Good", "Fair", "Used"];
 
 export default function ProductGrid() {
   const searchParams = useSearchParams();
-
   const urlCategory = searchParams.get("category");
   const urlSearch = searchParams.get("search");
 
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [location, setLocation] = useState("");
   const [condition, setCondition] = useState("All");
-
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  /* =========================================================
-     READ FILTERS FROM URL
-  ========================================================= */
-
   useEffect(() => {
     setSelectedCategory(urlCategory || "All");
-
-    if (urlSearch !== null) {
-      setSearch(urlSearch);
-    }
+    if (urlSearch !== null) setSearch(urlSearch);
   }, [urlCategory, urlSearch]);
-
-  /* =========================================================
-     LOAD REAL FIREBASE PRODUCTS
-  ========================================================= */
 
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const querySnapshot = await getDocs(
-          collection(db, "products")
-        );
-
-        const productList = querySnapshot.docs.map((doc) => {
-          const data = doc.data();
-
-          return {
-            id: doc.id,
-            ...(data as Omit<Product, "id">),
-          };
-        });
-
-        setProducts(productList);
+        const snapshot = await getDocs(collection(db, "products"));
+        const list = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...(doc.data() as Omit<Product, "id">),
+        }));
+        setProducts(list);
       } catch (error) {
         console.error("Error loading products:", error);
       } finally {
         setLoading(false);
       }
     }
-
     fetchProducts();
   }, []);
-
-  /* =========================================================
-     FILTER PRODUCTS
-  ========================================================= */
 
   const filteredProducts = useMemo(() => {
     const searchText = search.toLowerCase().trim();
     const locationText = location.toLowerCase().trim();
-
-    const minimum =
-      minPrice.trim() !== "" ? Number(minPrice) : null;
-
-    const maximum =
-      maxPrice.trim() !== "" ? Number(maxPrice) : null;
+    const minimum = minPrice.trim() ? Number(minPrice) : null;
+    const maximum = maxPrice.trim() ? Number(maxPrice) : null;
 
     return products.filter((product) => {
-      const productName =
-        product.name?.toLowerCase() || "";
-
-      const productCategory =
-        product.category?.toLowerCase() || "";
-
-      const productDescription =
-        product.description?.toLowerCase() || "";
-
-      const productLocation =
-        product.location?.toLowerCase() || "";
-
-      const productCondition =
-        product.condition?.toLowerCase() || "";
-
-      /* SEARCH */
+      const name = product.name?.toLowerCase() || "";
+      const category = product.category?.toLowerCase() || "";
+      const description = product.description?.toLowerCase() || "";
+      const productLocation = product.location?.toLowerCase() || "";
+      const productCondition = product.condition?.toLowerCase() || "";
+      const price = Number(product.price || 0);
 
       const matchesSearch =
         !searchText ||
-        productName.includes(searchText) ||
-        productCategory.includes(searchText) ||
-        productDescription.includes(searchText) ||
+        name.includes(searchText) ||
+        category.includes(searchText) ||
+        description.includes(searchText) ||
         productLocation.includes(searchText);
-
-      /* CATEGORY */
 
       const matchesCategory =
         selectedCategory === "All" ||
-        productCategory ===
-          selectedCategory.toLowerCase();
+        category === selectedCategory.toLowerCase();
 
-      /* PRICE */
-
-      const productPrice = Number(product.price || 0);
-
-      const matchesMinPrice =
+      const matchesMin =
         minimum === null ||
-        (Number.isFinite(minimum) &&
-          productPrice >= minimum);
+        (Number.isFinite(minimum) && price >= minimum);
 
-      const matchesMaxPrice =
+      const matchesMax =
         maximum === null ||
-        (Number.isFinite(maximum) &&
-          productPrice <= maximum);
-
-      /* LOCATION */
+        (Number.isFinite(maximum) && price <= maximum);
 
       const matchesLocation =
-        !locationText ||
-        productLocation.includes(locationText);
-
-      /* CONDITION */
+        !locationText || productLocation.includes(locationText);
 
       const matchesCondition =
         condition === "All" ||
@@ -169,8 +113,8 @@ export default function ProductGrid() {
       return (
         matchesSearch &&
         matchesCategory &&
-        matchesMinPrice &&
-        matchesMaxPrice &&
+        matchesMin &&
+        matchesMax &&
         matchesLocation &&
         matchesCondition
       );
@@ -185,20 +129,12 @@ export default function ProductGrid() {
     condition,
   ]);
 
-  /* =========================================================
-     ACTIVE FILTER COUNT
-  ========================================================= */
-
   const activeFilterCount =
     (selectedCategory !== "All" ? 1 : 0) +
     (minPrice ? 1 : 0) +
     (maxPrice ? 1 : 0) +
     (location.trim() ? 1 : 0) +
     (condition !== "All" ? 1 : 0);
-
-  /* =========================================================
-     CLEAR FILTERS
-  ========================================================= */
 
   const clearFilters = () => {
     setSearch("");
@@ -209,10 +145,6 @@ export default function ProductGrid() {
     setCondition("All");
   };
 
-  /* =========================================================
-     PRICE VALIDATION
-  ========================================================= */
-
   const hasPriceError =
     minPrice !== "" &&
     maxPrice !== "" &&
@@ -220,1290 +152,365 @@ export default function ProductGrid() {
     Number.isFinite(Number(maxPrice)) &&
     Number(minPrice) > Number(maxPrice);
 
-  /* =========================================================
-     LOADING
-  ========================================================= */
-
   if (loading) {
     return (
-      <section className="relative min-h-[70vh] overflow-hidden bg-[#08060d] px-6 py-24">
-        <div className="pointer-events-none absolute inset-0">
-
-          <div
-            className="
-              absolute inset-0
-              opacity-[0.05]
-              [background-image:linear-gradient(rgba(255,255,255,.5)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.5)_1px,transparent_1px)]
-              [background-size:60px_60px]
-            "
-          />
-
-          <div
-            className="
-              absolute
-              -left-40
-              top-20
-              h-96
-              w-96
-              rounded-full
-              bg-purple-600/20
-              blur-[120px]
-            "
-          />
-
-          <div
-            className="
-              absolute
-              -right-40
-              bottom-0
-              h-96
-              w-96
-              rounded-full
-              bg-orange-500/10
-              blur-[120px]
-            "
-          />
-
-        </div>
-
-        <div className="relative z-10 mx-auto max-w-7xl">
-
-          <div className="mb-12">
-
-            <div className="h-6 w-40 animate-pulse rounded-full bg-white/10" />
-
-            <div className="mt-6 h-14 w-96 max-w-full animate-pulse rounded-xl bg-white/10" />
-
-            <div className="mt-4 h-5 w-80 max-w-full animate-pulse rounded-lg bg-white/10" />
-
+      <section className="min-h-[45vh] bg-[#08060d] px-3 py-5 pb-28 sm:px-6 sm:py-12">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-5 space-y-3">
+            <div className="h-4 w-28 animate-pulse rounded bg-white/10" />
+            <div className="h-8 w-52 animate-pulse rounded bg-white/10" />
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-
-            {Array.from({ length: 6 }).map((_, index) => (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 lg:gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
               <div
-                key={index}
-                className="
-                  overflow-hidden
-                  rounded-3xl
-                  border
-                  border-white/10
-                  bg-white/[0.035]
-                "
+                key={i}
+                className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035]"
               >
-                <div className="h-64 animate-pulse bg-white/[0.06]" />
-
-                <div className="space-y-4 p-6">
-
-                  <div className="h-6 w-3/4 animate-pulse rounded bg-white/10" />
-
-                  <div className="h-8 w-1/2 animate-pulse rounded bg-white/10" />
-
-                  <div className="h-10 w-full animate-pulse rounded-xl bg-white/10" />
-
+                <div className="h-[135px] animate-pulse bg-white/[0.06] sm:h-56" />
+                <div className="space-y-3 p-3 sm:p-5">
+                  <div className="h-4 w-3/4 animate-pulse rounded bg-white/10" />
+                  <div className="h-5 w-1/2 animate-pulse rounded bg-white/10" />
+                  <div className="h-8 animate-pulse rounded bg-white/10" />
                 </div>
               </div>
             ))}
-
           </div>
-
         </div>
       </section>
     );
   }
 
-  /* =========================================================
-     MAIN
-  ========================================================= */
-
   return (
-    <section
-      className="
-        relative
-        min-h-screen
-        overflow-hidden
-        bg-[#08060d]
-        px-4
-        py-20
-        sm:px-6
-        sm:py-24
-      "
-    >
-
-      {/* =====================================================
-          BACKGROUND
-      ===================================================== */}
-
+    <section className="relative min-h-screen overflow-hidden bg-[#08060d] px-3 py-5 pb-28 sm:px-6 sm:py-12 sm:pb-16">
+      {/* Background */}
       <div className="pointer-events-none absolute inset-0">
-
-        <div
-          className="
-            absolute inset-0
-            opacity-[0.05]
-            [background-image:linear-gradient(rgba(255,255,255,.5)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.5)_1px,transparent_1px)]
-            [background-size:60px_60px]
-          "
-        />
-
-        {/* Purple glow */}
-
-        <motion.div
-          animate={{
-            x: [0, 100, -70, 0],
-            y: [0, -60, 70, 0],
-            scale: [1, 1.15, 0.95, 1],
-          }}
-          transition={{
-            duration: 16,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          className="
-            absolute
-            -left-48
-            top-20
-            h-[450px]
-            w-[450px]
-            rounded-full
-            bg-purple-600/20
-            blur-[130px]
-          "
-        />
-
-        {/* Orange glow */}
-
-        <motion.div
-          animate={{
-            x: [0, -80, 70, 0],
-            y: [0, 70, -50, 0],
-            scale: [1, 0.9, 1.1, 1],
-          }}
-          transition={{
-            duration: 18,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          className="
-            absolute
-            -right-48
-            bottom-0
-            h-[450px]
-            w-[450px]
-            rounded-full
-            bg-orange-500/10
-            blur-[130px]
-          "
-        />
-
-        {/* Center glow */}
-
-        <motion.div
-          animate={{
-            scale: [1, 1.3, 1],
-            opacity: [0.08, 0.16, 0.08],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          className="
-            absolute
-            left-1/2
-            top-1/2
-            h-64
-            w-64
-            -translate-x-1/2
-            -translate-y-1/2
-            rounded-full
-            bg-fuchsia-500/20
-            blur-[110px]
-          "
-        />
-
+        <div className="absolute inset-0 opacity-[0.035] [background-image:linear-gradient(rgba(255,255,255,.5)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.5)_1px,transparent_1px)] [background-size:60px_60px]" />
+        <div className="absolute -left-32 top-20 h-72 w-72 rounded-full bg-purple-600/15 blur-[100px] sm:h-[450px] sm:w-[450px]" />
+        <div className="absolute -right-32 bottom-0 h-72 w-72 rounded-full bg-orange-500/10 blur-[100px] sm:h-[450px] sm:w-[450px]" />
       </div>
 
-      {/* =====================================================
-          CONTENT
-      ===================================================== */}
-
       <div className="relative z-10 mx-auto max-w-7xl">
-
-        {/* ===================================================
-            HEADER
-        =================================================== */}
-
+        {/* Heading */}
         <motion.div
-          initial={{
-            opacity: 0,
-            y: 35,
-          }}
-          animate={{
-            opacity: 1,
-            y: 0,
-          }}
-          transition={{
-            duration: 0.7,
-          }}
-          className="mb-10"
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-5 sm:mb-10"
         >
-
-          <div
-            className="
-              mb-5
-              inline-flex
-              items-center
-              gap-2
-              rounded-full
-              border
-              border-purple-500/30
-              bg-purple-500/10
-              px-4
-              py-2
-              text-sm
-              font-semibold
-              text-purple-300
-              backdrop-blur-xl
-            "
-          >
-
-            <span
-              className="
-                h-2
-                w-2
-                animate-pulse
-                rounded-full
-                bg-purple-400
-              "
-            />
-
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-[10px] font-semibold text-purple-300 sm:mb-5 sm:px-4 sm:py-2 sm:text-sm">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-purple-400" />
             DealDone Marketplace
-
           </div>
 
-          <h1
-            className="
-              text-4xl
-              font-black
-              tracking-tight
-              text-white
-              sm:text-5xl
-              md:text-6xl
-            "
-          >
+          <h1 className="text-2xl font-black tracking-tight text-white sm:text-5xl md:text-6xl">
             Explore{" "}
-            <span
-              className="
-                bg-gradient-to-r
-                from-purple-400
-                via-fuchsia-400
-                to-orange-400
-                bg-clip-text
-                text-transparent
-              "
-            >
+            <span className="bg-gradient-to-r from-purple-400 via-fuchsia-400 to-orange-400 bg-clip-text text-transparent">
               real deals.
             </span>
           </h1>
 
-          <p
-            className="
-              mt-4
-              max-w-2xl
-              text-base
-              text-zinc-400
-              sm:text-lg
-            "
-          >
+          <p className="mt-2 text-xs text-zinc-400 sm:mt-4 sm:text-lg">
             Browse products listed by people on DealDone.
           </p>
-
         </motion.div>
 
-        {/* ===================================================
-            SEARCH + FILTER BUTTON
-        =================================================== */}
-
-        <div
-          className="
-            mb-6
-            flex
-            flex-col
-            gap-4
-            lg:flex-row
-            lg:items-center
-            lg:justify-between
-          "
-        >
-
-          {/* Search */}
-
-          <div className="relative w-full lg:max-w-2xl">
-
+        {/* Search and Filters */}
+        <div className="mb-3 flex gap-2 sm:mb-6 sm:flex-row sm:gap-4">
+          <div className="relative min-w-0 flex-1">
             <Search
-              size={21}
-              className="
-                absolute
-                left-5
-                top-1/2
-                -translate-y-1/2
-                text-zinc-500
-              "
+              size={17}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 sm:left-5 sm:h-5 sm:w-5"
             />
-
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search products, categories, descriptions..."
-              className="
-                w-full
-                rounded-2xl
-                border
-                border-white/10
-                bg-white/[0.04]
-                px-14
-                py-4
-                text-white
-                outline-none
-                backdrop-blur-xl
-                transition
-                placeholder:text-zinc-600
-                focus:border-purple-500/50
-                focus:bg-white/[0.06]
-                focus:ring-2
-                focus:ring-purple-500/10
-              "
+              placeholder="Search products..."
+              className="w-full rounded-xl border border-white/10 bg-white/[0.04] py-3 pl-9 pr-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-purple-500/50 sm:rounded-2xl sm:py-4 sm:pl-14 sm:pr-5 sm:text-base"
             />
-
           </div>
-
-          {/* Mobile / Desktop filter button */}
 
           <button
             type="button"
             onClick={() => setIsFilterOpen(true)}
-            className="
-              flex
-              w-full
-              items-center
-              justify-center
-              gap-3
-              rounded-2xl
-              border
-              border-white/10
-              bg-white/[0.05]
-              px-5
-              py-4
-              text-sm
-              font-semibold
-              text-white
-              backdrop-blur-xl
-              transition
-              hover:border-purple-400/30
-              hover:bg-white/[0.08]
-              lg:w-auto
-            "
+            className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-3 text-xs font-semibold text-white sm:rounded-2xl sm:px-5 sm:py-4 sm:text-sm"
           >
-
-            <SlidersHorizontal
-              size={18}
-              className="text-purple-400"
-            />
-
+            <SlidersHorizontal size={16} className="text-purple-400" />
             Filters
-
             {activeFilterCount > 0 && (
-              <span
-                className="
-                  flex
-                  h-6
-                  min-w-6
-                  items-center
-                  justify-center
-                  rounded-full
-                  bg-purple-500
-                  px-2
-                  text-xs
-                  font-black
-                  text-white
-                "
-              >
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-purple-500 px-1 text-[10px]">
                 {activeFilterCount}
               </span>
             )}
-
           </button>
-
-          {/* Desktop count */}
-
-          <div
-            className="
-              hidden
-              items-center
-              gap-3
-              rounded-2xl
-              border
-              border-white/10
-              bg-white/[0.035]
-              px-5
-              py-4
-              text-sm
-              backdrop-blur-xl
-              lg:flex
-            "
-          >
-
-            <SlidersHorizontal
-              size={17}
-              className="text-purple-400"
-            />
-
-            <span className="text-zinc-400">
-              Showing
-            </span>
-
-            <span className="font-bold text-white">
-              {filteredProducts.length}
-            </span>
-
-            <span className="text-zinc-500">
-              {filteredProducts.length === 1
-                ? "listing"
-                : "listings"}
-            </span>
-
-          </div>
-
         </div>
 
-        {/* ===================================================
-            MOBILE COUNT
-        =================================================== */}
-
-        <div
-          className="
-            mb-7
-            flex
-            items-center
-            justify-between
-            lg:hidden
-          "
-        >
-
-          <div className="text-sm text-zinc-500">
-
+        {/* Result count */}
+        <div className="mb-3 flex items-center justify-between text-xs text-zinc-500 sm:mb-5 sm:text-sm">
+          <span>
             Showing{" "}
-
-            <span className="font-bold text-white">
-              {filteredProducts.length}
-            </span>{" "}
-
-            {filteredProducts.length === 1
-              ? "listing"
-              : "listings"}
-
-          </div>
-
+            <strong className="text-white">{filteredProducts.length}</strong>{" "}
+            {filteredProducts.length === 1 ? "listing" : "listings"}
+          </span>
           {activeFilterCount > 0 && (
             <button
               type="button"
               onClick={clearFilters}
-              className="
-                inline-flex
-                items-center
-                gap-2
-                text-sm
-                font-semibold
-                text-purple-300
-              "
+              className="flex items-center gap-1.5 font-semibold text-purple-300"
             >
-              <RotateCcw size={15} />
-              Clear
+              <RotateCcw size={13} />
+              Clear filters
             </button>
           )}
-
         </div>
 
-        {/* ===================================================
-            CATEGORY FILTER
-        =================================================== */}
+        {/* Categories */}
+        <div className="mb-4 sm:mb-6">
+          <CategoryFilter
+            selectedCategory={selectedCategory}
+            onSelectCategory={setSelectedCategory}
+          />
+        </div>
 
-        <CategoryFilter
-          selectedCategory={selectedCategory}
-          onSelectCategory={setSelectedCategory}
-        />
-
-        {/* ===================================================
-            ACTIVE FILTER CHIPS
-        =================================================== */}
-
+        {/* Active filters */}
         {activeFilterCount > 0 && (
-          <div
-            className="
-              mb-7
-              mt-6
-              flex
-              flex-wrap
-              items-center
-              gap-2
-            "
-          >
-
-            <span
-              className="
-                mr-1
-                text-xs
-                font-semibold
-                uppercase
-                tracking-[0.14em]
-                text-zinc-600
-              "
-            >
-              Active:
-            </span>
-
+          <div className="mb-4 flex flex-wrap items-center gap-2 sm:mb-6">
             {selectedCategory !== "All" && (
               <button
-                type="button"
                 onClick={() => setSelectedCategory("All")}
-                className="
-                  inline-flex
-                  items-center
-                  gap-2
-                  rounded-full
-                  border
-                  border-purple-400/20
-                  bg-purple-500/10
-                  px-3
-                  py-1.5
-                  text-xs
-                  font-semibold
-                  text-purple-300
-                "
+                className="rounded-full border border-purple-400/20 bg-purple-500/10 px-3 py-1 text-xs text-purple-300"
               >
-                {selectedCategory}
-                <X size={13} />
+                {selectedCategory} ×
               </button>
             )}
-
             {minPrice && (
               <button
-                type="button"
                 onClick={() => setMinPrice("")}
-                className="
-                  inline-flex
-                  items-center
-                  gap-2
-                  rounded-full
-                  border
-                  border-white/10
-                  bg-white/[0.05]
-                  px-3
-                  py-1.5
-                  text-xs
-                  font-semibold
-                  text-zinc-300
-                "
+                className="rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-300"
               >
-                Min ₹{Number(minPrice).toLocaleString("en-IN")}
-                <X size={13} />
+                Min ₹{Number(minPrice).toLocaleString("en-IN")} ×
               </button>
             )}
-
             {maxPrice && (
               <button
-                type="button"
                 onClick={() => setMaxPrice("")}
-                className="
-                  inline-flex
-                  items-center
-                  gap-2
-                  rounded-full
-                  border
-                  border-white/10
-                  bg-white/[0.05]
-                  px-3
-                  py-1.5
-                  text-xs
-                  font-semibold
-                  text-zinc-300
-                "
+                className="rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-300"
               >
-                Max ₹{Number(maxPrice).toLocaleString("en-IN")}
-                <X size={13} />
+                Max ₹{Number(maxPrice).toLocaleString("en-IN")} ×
               </button>
             )}
-
             {location && (
               <button
-                type="button"
                 onClick={() => setLocation("")}
-                className="
-                  inline-flex
-                  items-center
-                  gap-2
-                  rounded-full
-                  border
-                  border-white/10
-                  bg-white/[0.05]
-                  px-3
-                  py-1.5
-                  text-xs
-                  font-semibold
-                  text-zinc-300
-                "
+                className="rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-300"
               >
-                {location}
-                <X size={13} />
+                {location} ×
               </button>
             )}
-
             {condition !== "All" && (
               <button
-                type="button"
                 onClick={() => setCondition("All")}
-                className="
-                  inline-flex
-                  items-center
-                  gap-2
-                  rounded-full
-                  border
-                  border-white/10
-                  bg-white/[0.05]
-                  px-3
-                  py-1.5
-                  text-xs
-                  font-semibold
-                  text-zinc-300
-                "
+                className="rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-300"
               >
-                {condition}
-                <X size={13} />
+                {condition} ×
               </button>
             )}
-
           </div>
         )}
 
-        {/* ===================================================
-            FILTER MODAL
-        =================================================== */}
-
+        {/* Filter Sheet */}
         <AnimatePresence>
           {isFilterOpen && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="
-                fixed
-                inset-0
-                z-[100]
-                flex
-                items-end
-                justify-center
-                bg-black/70
-                p-0
-                backdrop-blur-sm
-                sm:items-center
-                sm:p-6
-              "
-              onMouseDown={(event) => {
-                if (event.target === event.currentTarget) {
-                  setIsFilterOpen(false);
-                }
+              className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-5"
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget) setIsFilterOpen(false);
               }}
             >
-
               <motion.div
-                initial={{
-                  y: 60,
-                  opacity: 0,
-                }}
-                animate={{
-                  y: 0,
-                  opacity: 1,
-                }}
-                exit={{
-                  y: 60,
-                  opacity: 0,
-                }}
-                transition={{
-                  duration: 0.25,
-                }}
-                className="
-                  max-h-[90vh]
-                  w-full
-                  overflow-y-auto
-                  rounded-t-[2rem]
-                  border
-                  border-white/10
-                  bg-[#100d16]
-                  p-6
-                  shadow-2xl
-                  sm:max-w-xl
-                  sm:rounded-[2rem]
-                "
+                initial={{ y: 40 }}
+                animate={{ y: 0 }}
+                exit={{ y: 40 }}
+                className="max-h-[85dvh] w-full overflow-y-auto rounded-t-3xl border border-white/10 bg-[#100d16] p-4 pb-[calc(16px+env(safe-area-inset-bottom))] sm:max-w-lg sm:rounded-3xl sm:p-6"
               >
-
-                {/* Header */}
-
-                <div
-                  className="
-                    mb-7
-                    flex
-                    items-center
-                    justify-between
-                  "
-                >
-
+                <div className="mb-5 flex items-center justify-between">
                   <div>
-
-                    <p
-                      className="
-                        text-xs
-                        font-bold
-                        uppercase
-                        tracking-[0.18em]
-                        text-purple-400
-                      "
-                    >
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-purple-400">
                       Refine results
                     </p>
-
-                    <h2
-                      className="
-                        mt-1
-                        text-2xl
-                        font-black
-                        text-white
-                      "
-                    >
-                      Filters
-                    </h2>
-
+                    <h2 className="text-xl font-black text-white">Filters</h2>
                   </div>
-
                   <button
-                    type="button"
                     onClick={() => setIsFilterOpen(false)}
-                    className="
-                      flex
-                      h-10
-                      w-10
-                      items-center
-                      justify-center
-                      rounded-full
-                      border
-                      border-white/10
-                      bg-white/[0.05]
-                      text-zinc-300
-                      transition
-                      hover:bg-white/[0.1]
-                    "
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-zinc-300"
                   >
-                    <X size={19} />
+                    <X size={18} />
                   </button>
-
                 </div>
 
-                <div className="space-y-6">
-
-                  {/* CATEGORY */}
-
+                <div className="space-y-4">
                   <div>
-
-                    <label
-                      className="
-                        mb-3
-                        flex
-                        items-center
-                        gap-2
-                        text-sm
-                        font-semibold
-                        text-zinc-300
-                      "
-                    >
-                      <Tag
-                        size={16}
-                        className="text-purple-400"
-                      />
-
+                    <label className="mb-2 flex items-center gap-2 text-xs font-semibold text-zinc-300">
+                      <Tag size={15} className="text-purple-400" />
                       Category
                     </label>
-
-                    <div
-                      className="
-                        rounded-2xl
-                        border
-                        border-white/10
-                        bg-white/[0.035]
-                        p-3
-                      "
+                    <select
+                      value={selectedCategory}
+                      onChange={(e) => setSelectedCategory(e.target.value)}
+                      className="w-full rounded-xl border border-white/10 bg-[#100d16] px-3 py-3 text-sm text-white outline-none"
                     >
-
-                      <select
-                        value={selectedCategory}
-                        onChange={(e) =>
-                          setSelectedCategory(e.target.value)
-                        }
-                        className="
-                          w-full
-                          bg-transparent
-                          px-2
-                          py-2
-                          text-sm
-                          text-white
-                          outline-none
-                        "
-                      >
-
-                        <option
-                          value="All"
-                          className="bg-[#100d16]"
-                        >
-                          All Categories
-                        </option>
-
-                        {Array.from(
-                          new Set(
-                            products
-                              .map(
-                                (product) =>
-                                  product.category
-                              )
-                              .filter(Boolean)
-                          )
-                        )
-                          .sort((a, b) =>
-                            String(a).localeCompare(
-                              String(b)
-                            )
-                          )
-                          .map((category) => (
-                            <option
-                              key={category}
-                              value={category}
-                              className="bg-[#100d16]"
-                            >
-                              {category}
-                            </option>
-                          ))}
-
-                      </select>
-
-                    </div>
-
+                      <option value="All">All Categories</option>
+                      {Array.from(
+                        new Set(products.map((p) => p.category).filter(Boolean))
+                      )
+                        .sort((a, b) => String(a).localeCompare(String(b)))
+                        .map((category) => (
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
+                        ))}
+                    </select>
                   </div>
 
-                  {/* PRICE */}
-
                   <div>
-
-                    <label
-                      className="
-                        mb-3
-                        flex
-                        items-center
-                        gap-2
-                        text-sm
-                        font-semibold
-                        text-zinc-300
-                      "
-                    >
-                      <IndianRupee
-                        size={16}
-                        className="text-purple-400"
-                      />
-
+                    <label className="mb-2 flex items-center gap-2 text-xs font-semibold text-zinc-300">
+                      <IndianRupee size={15} className="text-purple-400" />
                       Price range
                     </label>
-
-                    <div className="grid grid-cols-2 gap-3">
-
+                    <div className="grid grid-cols-2 gap-2">
                       <input
                         type="number"
                         min="0"
                         value={minPrice}
-                        onChange={(e) =>
-                          setMinPrice(e.target.value)
-                        }
+                        onChange={(e) => setMinPrice(e.target.value)}
                         placeholder="Minimum"
-                        className="
-                          w-full
-                          rounded-2xl
-                          border
-                          border-white/10
-                          bg-white/[0.035]
-                          px-4
-                          py-3
-                          text-white
-                          outline-none
-                          placeholder:text-zinc-600
-                          focus:border-purple-500/40
-                        "
+                        className="min-w-0 rounded-xl border border-white/10 bg-white/[0.035] px-3 py-3 text-sm text-white outline-none"
                       />
-
                       <input
                         type="number"
                         min="0"
                         value={maxPrice}
-                        onChange={(e) =>
-                          setMaxPrice(e.target.value)
-                        }
+                        onChange={(e) => setMaxPrice(e.target.value)}
                         placeholder="Maximum"
-                        className="
-                          w-full
-                          rounded-2xl
-                          border
-                          border-white/10
-                          bg-white/[0.035]
-                          px-4
-                          py-3
-                          text-white
-                          outline-none
-                          placeholder:text-zinc-600
-                          focus:border-purple-500/40
-                        "
+                        className="min-w-0 rounded-xl border border-white/10 bg-white/[0.035] px-3 py-3 text-sm text-white outline-none"
                       />
-
                     </div>
-
                     {hasPriceError && (
-                      <p className="mt-2 text-xs font-medium text-red-400">
-                        Maximum price should be greater than minimum price.
+                      <p className="mt-2 text-xs text-red-400">
+                        Maximum price must be greater than minimum price.
                       </p>
                     )}
-
                   </div>
 
-                  {/* LOCATION */}
-
                   <div>
-
-                    <label
-                      className="
-                        mb-3
-                        flex
-                        items-center
-                        gap-2
-                        text-sm
-                        font-semibold
-                        text-zinc-300
-                      "
-                    >
-                      <MapPin
-                        size={16}
-                        className="text-purple-400"
-                      />
-
+                    <label className="mb-2 flex items-center gap-2 text-xs font-semibold text-zinc-300">
+                      <MapPin size={15} className="text-purple-400" />
                       Location
                     </label>
-
                     <input
-                      type="text"
                       value={location}
-                      onChange={(e) =>
-                        setLocation(e.target.value)
-                      }
-                      placeholder="Search by city or area..."
-                      className="
-                        w-full
-                        rounded-2xl
-                        border
-                        border-white/10
-                        bg-white/[0.035]
-                        px-4
-                        py-3
-                        text-white
-                        outline-none
-                        placeholder:text-zinc-600
-                        focus:border-purple-500/40
-                      "
+                      onChange={(e) => setLocation(e.target.value)}
+                      placeholder="City or area..."
+                      className="w-full rounded-xl border border-white/10 bg-white/[0.035] px-3 py-3 text-sm text-white outline-none"
                     />
-
                   </div>
-
-                  {/* CONDITION */}
 
                   <div>
-
-                    <label
-                      className="
-                        mb-3
-                        block
-                        text-sm
-                        font-semibold
-                        text-zinc-300
-                      "
-                    >
+                    <label className="mb-2 block text-xs font-semibold text-zinc-300">
                       Condition
                     </label>
-
-                    <div
-                      className="
-                        grid
-                        grid-cols-2
-                        gap-2
-                        sm:grid-cols-5
-                      "
-                    >
-
-                      {CONDITIONS.map((item) => {
-                        const active =
-                          condition === item;
-
-                        return (
-                          <button
-                            key={item}
-                            type="button"
-                            onClick={() =>
-                              setCondition(item)
-                            }
-                            className={`
-                              rounded-xl
-                              border
-                              px-3
-                              py-3
-                              text-xs
-                              font-semibold
-                              transition
-                              ${
-                                active
-                                  ? "border-purple-400/40 bg-purple-500/15 text-purple-300"
-                                  : "border-white/10 bg-white/[0.035] text-zinc-400 hover:bg-white/[0.07]"
-                              }
-                            `}
-                          >
-                            {item}
-                          </button>
-                        );
-                      })}
-
+                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                      {CONDITIONS.map((item) => (
+                        <button
+                          key={item}
+                          onClick={() => setCondition(item)}
+                          className={`rounded-lg border px-2 py-2.5 text-xs font-semibold ${
+                            condition === item
+                              ? "border-purple-400/40 bg-purple-500/15 text-purple-300"
+                              : "border-white/10 bg-white/[0.035] text-zinc-400"
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      ))}
                     </div>
-
                   </div>
-
                 </div>
 
-                {/* BUTTONS */}
-
-                <div
-                  className="
-                    mt-8
-                    grid
-                    grid-cols-2
-                    gap-3
-                  "
-                >
-
+                <div className="mt-5 grid grid-cols-2 gap-2">
                   <button
-                    type="button"
                     onClick={clearFilters}
-                    className="
-                      flex
-                      items-center
-                      justify-center
-                      gap-2
-                      rounded-2xl
-                      border
-                      border-white/10
-                      bg-white/[0.04]
-                      px-4
-                      py-4
-                      text-sm
-                      font-bold
-                      text-zinc-300
-                      transition
-                      hover:bg-white/[0.08]
-                    "
+                    className="flex items-center justify-center gap-2 rounded-xl border border-white/10 py-3 text-sm font-bold text-zinc-300"
                   >
-                    <RotateCcw size={16} />
+                    <RotateCcw size={15} />
                     Clear
                   </button>
-
                   <button
-                    type="button"
                     onClick={() => setIsFilterOpen(false)}
                     disabled={hasPriceError}
-                    className="
-                      flex
-                      items-center
-                      justify-center
-                      gap-2
-                      rounded-2xl
-                      bg-purple-500
-                      px-4
-                      py-4
-                      text-sm
-                      font-black
-                      text-white
-                      transition
-                      hover:bg-purple-400
-                      disabled:cursor-not-allowed
-                      disabled:opacity-40
-                    "
+                    className="flex items-center justify-center gap-2 rounded-xl bg-purple-500 py-3 text-sm font-bold text-white disabled:opacity-40"
                   >
-                    <Check size={16} />
+                    <Check size={15} />
                     Show {filteredProducts.length}
                   </button>
-
                 </div>
-
               </motion.div>
-
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* ===================================================
-            PRODUCTS
-        =================================================== */}
-
+        {/* Product grid */}
         {filteredProducts.length > 0 ? (
           <motion.div
             layout
-            className="
-              grid
-              grid-cols-1
-              gap-6
-              sm:grid-cols-2
-              lg:grid-cols-3
-            "
+            className="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 lg:gap-6"
           >
-
-            {filteredProducts.map(
-              (product, index) => (
-                <motion.div
-                  key={product.id}
-                  layout
-                  initial={{
-                    opacity: 0,
-                    y: 25,
-                  }}
-                  animate={{
-                    opacity: 1,
-                    y: 0,
-                  }}
-                  transition={{
-                    duration: 0.4,
-                    delay: Math.min(
-                      index * 0.05,
-                      0.3
-                    ),
-                  }}
-                >
-
-                  <ProductCard
-                    id={product.id}
-                    name={product.name}
-                    price={`₹${Number(
-                      product.price || 0
-                    ).toLocaleString("en-IN")}`}
-                    image={product.image}
-                  />
-
-                </motion.div>
-              )
-            )}
-
+            {filteredProducts.map((product, index) => (
+              <motion.div
+                key={product.id}
+                layout
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: Math.min(index * 0.03, 0.2) }}
+                className="min-w-0"
+              >
+                <ProductCard
+                  id={product.id}
+                  name={product.name}
+                  price={`₹${Number(product.price || 0).toLocaleString("en-IN")}`}
+                  image={product.image}
+                />
+              </motion.div>
+            ))}
           </motion.div>
         ) : (
-
-          /* =================================================
-             EMPTY STATE
-          ================================================= */
-
           <motion.div
-            initial={{
-              opacity: 0,
-              y: 20,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-            }}
-            className="
-              flex
-              min-h-[350px]
-              flex-col
-              items-center
-              justify-center
-              rounded-[32px]
-              border
-              border-white/10
-              bg-white/[0.025]
-              px-6
-              text-center
-              backdrop-blur-xl
-            "
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-white/10 bg-white/[0.025] px-4 text-center sm:min-h-[350px] sm:rounded-[32px] sm:px-6"
           >
-
-            <div
-              className="
-                mb-6
-                flex
-                h-16
-                w-16
-                items-center
-                justify-center
-                rounded-2xl
-                border
-                border-purple-400/20
-                bg-purple-500/10
-                text-purple-300
-              "
-            >
-              <Search size={28} />
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-purple-400/20 bg-purple-500/10 text-purple-300 sm:mb-6 sm:h-16 sm:w-16 sm:rounded-2xl">
+              <Search size={23} />
             </div>
-
-            <h3
-              className="
-                text-2xl
-                font-bold
-                text-white
-              "
-            >
+            <h3 className="text-lg font-bold text-white sm:text-2xl">
               No listings found
             </h3>
-
-            <p
-              className="
-                mt-3
-                max-w-md
-                text-zinc-500
-              "
-            >
+            <p className="mt-2 max-w-md text-xs text-zinc-500 sm:mt-3 sm:text-sm">
               {selectedCategory !== "All"
                 ? `There are currently no ${selectedCategory} listings matching your filters.`
                 : "Try changing your search or filters to find more products."}
             </p>
-
             <button
-              type="button"
               onClick={clearFilters}
-              className="
-                mt-7
-                rounded-full
-                border
-                border-purple-400/30
-                bg-purple-500/10
-                px-6
-                py-3
-                font-semibold
-                text-purple-300
-                transition
-                hover:bg-purple-500
-                hover:text-white
-              "
+              className="mt-4 rounded-full border border-purple-400/30 bg-purple-500/10 px-5 py-2.5 text-sm font-semibold text-purple-300 hover:bg-purple-500 hover:text-white sm:mt-7 sm:px-6 sm:py-3"
             >
               Clear Filters
             </button>
-
           </motion.div>
         )}
-
       </div>
     </section>
   );

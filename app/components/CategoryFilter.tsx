@@ -1,3 +1,4 @@
+
 "use client";
 
 import { motion } from "framer-motion";
@@ -21,79 +22,76 @@ export default function CategoryFilter({
   onSelectCategory,
 }: Props) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      viewport={{ once: true }}
+    <div
       className="
-        flex
-        flex-wrap
-        items-center
-        justify-center
-        gap-3
+        -mx-3
+        overflow-x-auto
+        px-3
+        pb-1
+        sm:mx-0
+        sm:overflow-visible
+        sm:px-0
       "
+      style={{ scrollbarWidth: "none" }}
     >
-      {categories.map((category) => {
-        const active = selectedCategory === category;
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25 }}
+        className="
+          flex
+          w-max
+          items-center
+          gap-2
+          sm:w-full
+          sm:flex-wrap
+          sm:gap-3
+          lg:justify-center
+        "
+      >
+        {categories.map((category) => {
+          const active = selectedCategory === category;
 
-        return (
-          <motion.button
-            key={category}
-            type="button"
-            onClick={() => onSelectCategory(category)}
-            whileHover={{
-              y: -3,
-              scale: 1.03,
-            }}
-            whileTap={{
-              scale: 0.96,
-            }}
-            className={`
-              relative
-              overflow-hidden
-              rounded-full
-              px-6
-              py-3
-              text-sm
-              font-semibold
-              transition-all
-              duration-300
-              ${
-                active
-                  ? "bg-purple-600 text-white shadow-[0_0_25px_rgba(147,51,234,0.35)]"
-                  : "border border-white/10 bg-white/[0.04] text-zinc-400 hover:border-purple-500/40 hover:bg-purple-500/10 hover:text-purple-300"
-              }
-            `}
-          >
-            {/* Active shine */}
-            {active && (
-              <motion.span
-                initial={{ x: "-100%" }}
-                animate={{ x: "200%" }}
-                transition={{
-                  duration: 1.8,
-                  repeat: Infinity,
-                  repeatDelay: 2,
-                  ease: "easeInOut",
-                }}
-                className="
-                  absolute
-                  inset-y-0
-                  w-12
-                  rotate-12
-                  bg-white/10
-                  blur-md
-                "
-              />
-            )}
+          return (
+            <motion.button
+              key={category}
+              type="button"
+              onClick={() => onSelectCategory(category)}
+              whileTap={{ scale: 0.96 }}
+              className={`
+                relative
+                shrink-0
+                overflow-hidden
+                rounded-full
+                px-4
+                py-2.5
+                text-xs
+                font-semibold
+                transition-colors
+                duration-200
+                sm:px-6
+                sm:py-3
+                sm:text-sm
+                ${
+                  active
+                    ? "bg-purple-600 text-white shadow-[0_0_18px_rgba(147,51,234,0.25)]"
+                    : "border border-white/10 bg-white/[0.04] text-zinc-400 hover:border-purple-500/40 hover:bg-purple-500/10 hover:text-purple-300"
+                }
+              `}
+            >
+              {active && (
+                <motion.span
+                  layoutId="category-highlight"
+                  className="absolute inset-0 rounded-full bg-purple-600"
+                  transition={{ duration: 0.2 }}
+                />
+              )}
 
-            <span className="relative z-10">
-              {category}
-            </span>
-          </motion.button>
-        );
-      })}
-    </motion.div>
+              <span className="relative z-10">{category}</span>
+            </motion.button>
+          );
+        })}
+      </motion.div>
+    </div>
   );
 }

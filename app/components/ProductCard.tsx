@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -19,214 +20,67 @@ export default function ProductCard({
 }: ProductCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
+      initial={{ opacity: 0, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.15 }}
-      whileHover={{ y: -8 }}
-      transition={{ duration: 0.35, ease: "easeOut" }}
-      className="
-        group
-        relative
-        overflow-hidden
-        rounded-3xl
-        bg-zinc-900
-        border
-        border-zinc-800
-        hover:border-purple-500/60
-        shadow-lg
-        hover:shadow-[0_20px_60px_rgba(139,92,246,0.18)]
-        transition-all
-        duration-500
-      "
+      viewport={{ once: true, amount: 0.1 }}
+      whileHover={{ y: -4 }}
+      transition={{ duration: 0.25 }}
+      className="group relative min-w-0 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 shadow-sm transition-colors hover:border-purple-500/50 sm:rounded-3xl sm:shadow-lg"
     >
-
-      {/* Animated glow */}
-      <div
-        className="
-          pointer-events-none
-          absolute
-          -top-24
-          -right-24
-          w-48
-          h-48
-          rounded-full
-          bg-purple-600/10
-          blur-3xl
-          opacity-0
-          group-hover:opacity-100
-          transition-opacity
-          duration-500
-        "
-      />
-
       {/* Wishlist */}
       <button
         type="button"
         aria-label="Add to wishlist"
         onClick={(e) => e.preventDefault()}
-        className="
-          absolute
-          top-4
-          right-4
-          z-20
-          w-11
-          h-11
-          flex
-          items-center
-          justify-center
-          rounded-full
-          bg-black/50
-          backdrop-blur-md
-          border
-          border-white/10
-          text-white
-          hover:bg-purple-600
-          hover:border-purple-400
-          hover:scale-110
-          transition-all
-          duration-300
-        "
+        className="absolute right-2 top-2 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md transition-colors hover:bg-purple-600 sm:right-3 sm:top-3 sm:h-10 sm:w-10"
       >
-        <Heart size={19} />
+        <Heart size={16} />
       </button>
 
       {/* Product Image */}
-      <Link href={`/product/${id}`}>
-        <div className="relative h-64 overflow-hidden bg-zinc-800">
-
+      <Link href={`/product/${id}`} className="block">
+        <div className="relative h-[135px] overflow-hidden bg-zinc-800 sm:h-56 md:h-64">
           {image ? (
             <img
               src={image}
               alt={name}
-              className="
-                w-full
-                h-full
-                object-cover
-                transition-transform
-                duration-700
-                ease-out
-                group-hover:scale-105
-              "
+              loading="lazy"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : (
-            <div
-              className="
-                w-full
-                h-full
-                flex
-                flex-col
-                items-center
-                justify-center
-                text-zinc-500
-              "
-            >
-              <ImageOff size={36} />
-              <span className="mt-2 text-sm">
-                No image available
-              </span>
+            <div className="flex h-full flex-col items-center justify-center text-zinc-500">
+              <ImageOff size={25} />
+              <span className="mt-1 text-xs">No image</span>
             </div>
           )}
 
-          {/* Bottom image gradient */}
-          <div
-            className="
-              absolute
-              inset-x-0
-              bottom-0
-              h-24
-              bg-gradient-to-t
-              from-black/60
-              to-transparent
-              pointer-events-none
-            "
-          />
-
-          {/* View icon */}
-          <div
-            className="
-              absolute
-              bottom-4
-              right-4
-              w-10
-              h-10
-              rounded-full
-              bg-black/50
-              backdrop-blur-md
-              border
-              border-white/10
-              flex
-              items-center
-              justify-center
-              text-white
-              opacity-0
-              translate-y-3
-              group-hover:opacity-100
-              group-hover:translate-y-0
-              transition-all
-              duration-300
-            "
-          >
-            <ArrowUpRight size={19} />
-          </div>
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/40 to-transparent" />
         </div>
       </Link>
 
       {/* Product Details */}
-      <div className="relative p-5">
-
-        {/* Product name */}
+      <div className="min-w-0 p-2.5 sm:p-4 md:p-5">
         <Link href={`/product/${id}`}>
-          <h3
-            className="
-              text-xl
-              font-bold
-              text-white
-              line-clamp-1
-              hover:text-purple-400
-              transition-colors
-            "
-          >
+          <h3 className="line-clamp-2 min-h-[34px] text-xs font-semibold leading-4 text-white transition-colors hover:text-purple-400 sm:min-h-0 sm:text-base sm:leading-6">
             {name}
           </h3>
         </Link>
 
-        {/* Price */}
-        <p className="mt-3 text-2xl font-extrabold text-purple-400">
+        <p className="mt-2 truncate text-base font-extrabold text-purple-400 sm:mt-3 sm:text-xl md:text-2xl">
           {price}
         </p>
 
-        {/* Divider */}
-        <div className="my-5 h-px bg-zinc-800" />
+        <div className="my-2.5 h-px bg-zinc-800 sm:my-4" />
 
-        {/* View Deal */}
-        <Link href={`/product/${id}`}>
+        <Link href={`/product/${id}`} className="block">
           <motion.div
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="
-              w-full
-              flex
-              items-center
-              justify-center
-              gap-2
-              rounded-xl
-              bg-zinc-800
-              border
-              border-zinc-700
-              py-3
-              font-semibold
-              text-white
-              hover:bg-purple-600
-              hover:border-purple-500
-              transition-all
-              duration-300
-            "
+            whileTap={{ scale: 0.97 }}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-800 py-2 text-xs font-semibold text-white transition-colors hover:border-purple-500 hover:bg-purple-600 sm:gap-2 sm:rounded-xl sm:py-3 sm:text-sm"
           >
             View Deal
-            <ArrowUpRight size={18} />
+            <ArrowUpRight size={14} />
           </motion.div>
         </Link>
-
       </div>
     </motion.div>
   );

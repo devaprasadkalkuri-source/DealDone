@@ -1,42 +1,222 @@
+
 @import "tailwindcss";
 
+/* =========================================================
+   DEALDONE — RESPONSIVE GLOBAL FOUNDATION
+   ========================================================= */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #050a18;
+  --foreground: #ededed;
+
+  --mobile-bottom-nav-height: 82px;
+  --page-padding-mobile: 16px;
+  --page-padding-tablet: 24px;
+  --page-padding-desktop: 32px;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* =========================================================
+   RESET + VIEWPORT
+   ========================================================= */
+
+* {
+  box-sizing: border-box;
 }
 
 html {
   scroll-behavior: smooth;
+  background: var(--background);
+
+  width: 100%;
+  min-height: 100%;
+
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+
+  scroll-padding-top: 90px;
 }
 
 body {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+
+  margin: 0;
+
   background: var(--background);
   color: var(--foreground);
+
   font-family: Arial, Helvetica, sans-serif;
-  overflow-x: hidden;
+
+  overflow-x: clip;
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ===========================================
-   FLOATING ANIMATIONS
-=========================================== */
+/* =========================================================
+   RESPONSIVE MEDIA
+   ========================================================= */
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+img,
+video {
+  height: auto;
+}
+
+iframe {
+  max-width: 100%;
+}
+
+/* =========================================================
+   RESPONSIVE TEXT
+   ========================================================= */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  overflow-wrap: break-word;
+}
+
+p {
+  overflow-wrap: break-word;
+}
+
+input,
+textarea,
+select,
+button {
+  font: inherit;
+}
+
+input,
+textarea,
+select {
+  max-width: 100%;
+}
+
+/* Avoid tiny input text on mobile Safari */
+
+input,
+textarea,
+select {
+  font-size: 16px;
+}
+
+/* =========================================================
+   MOBILE TOUCH EXPERIENCE
+   ========================================================= */
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  touch-action: manipulation;
+}
+
+a {
+  touch-action: manipulation;
+}
+
+/* =========================================================
+   MOBILE SAFE AREA
+   ========================================================= */
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Pages with fixed mobile bottom navigation */
+
+.mobile-nav-spacing {
+  padding-bottom: calc(
+    var(--mobile-bottom-nav-height) + env(safe-area-inset-bottom)
+  );
+}
+
+/* =========================================================
+   RESPONSIVE CONTAINER
+   ========================================================= */
+
+.responsive-container {
+  width: 100%;
+  max-width: 1280px;
+
+  margin-inline: auto;
+
+  padding-inline: var(--page-padding-mobile);
+}
+
+@media (min-width: 640px) {
+  .responsive-container {
+    padding-inline: var(--page-padding-tablet);
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-container {
+    padding-inline: var(--page-padding-desktop);
+  }
+}
+
+/* =========================================================
+   RESPONSIVE GRID
+   ========================================================= */
+
+.responsive-product-grid {
+  display: grid;
+
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  gap: 12px;
+
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .responsive-product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-product-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 24px;
+  }
+}
+
+/* =========================================================
+   EXISTING ANIMATIONS — PRESERVED
+   ========================================================= */
 
 @keyframes floating {
   0% {
-    transform: translateY(0px) rotate(0deg);
+    transform: translateY(0) rotate(0deg);
   }
 
   50% {
@@ -44,7 +224,7 @@ body {
   }
 
   100% {
-    transform: translateY(0px) rotate(0deg);
+    transform: translateY(0) rotate(0deg);
   }
 }
 
@@ -64,19 +244,15 @@ body {
   animation: floating 7s ease-in-out infinite;
 }
 
-/* ===========================================
-   GLOW EFFECT
-=========================================== */
+/* =========================================================
+   EXISTING EFFECTS — PRESERVED
+   ========================================================= */
 
 .glow {
   box-shadow:
-    0 0 20px rgba(255, 136, 0, 0.25),
-    0 0 40px rgba(255, 136, 0, 0.15);
+    0 0 20px rgba(0, 120, 255, 0.25),
+    0 0 40px rgba(0, 160, 255, 0.15);
 }
-
-/* ===========================================
-   HOVER LIFT
-=========================================== */
 
 .hover-lift {
   transition: all 0.35s ease;
@@ -84,4 +260,68 @@ body {
 
 .hover-lift:hover {
   transform: translateY(-10px) scale(1.03);
+}
+
+/* Disable hover lift on touch devices */
+
+@media (hover: none) {
+  .hover-lift:hover {
+    transform: none;
+  }
+}
+
+/* =========================================================
+   SELECTION
+   ========================================================= */
+
+::selection {
+  background: rgba(0, 120, 255, 0.45);
+  color: white;
+}
+
+/* =========================================================
+   SCROLLBAR
+   ========================================================= */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #050a18;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #153b75;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #087bff;
+}
+
+/* =========================================================
+   ACCESSIBILITY — REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* =========================================================
+   SMALL MOBILE SCREENS
+   ========================================================= */
+
+@media (max-width: 360px) {
+  :root {
+    --page-padding-mobile: 12px;
+    --mobile-bottom-nav-height: 76px;
+  }
 }
