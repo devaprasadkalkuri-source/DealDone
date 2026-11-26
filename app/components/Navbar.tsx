@@ -2,18 +2,22 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+
 import {
   Search,
   Heart,
-  Bell,
-  MapPin,
   Menu,
   X,
   ArrowUpRight,
   UserRound,
   LogOut,
   Settings,
+  Home,
+  PackageSearch,
+  Plus,
 } from "lucide-react";
+
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
@@ -22,7 +26,7 @@ const navItems = [
   { label: "Home", href: "/" },
   { label: "Categories", href: "/#categories" },
   { label: "Deals", href: "/#featured-deals" },
-  { label: "Sell", href: "/sell" },
+  { label: "Explore", href: "/products" },
 ];
 
 type ProfileData = {
@@ -33,11 +37,14 @@ type ProfileData = {
 };
 
 export default function Navbar() {
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     let unsubscribeProfile: (() => void) | null = null;
@@ -45,20 +52,16 @@ export default function Navbar() {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
 
-      if (unsubscribeProfile) {
-        unsubscribeProfile();
-        unsubscribeProfile = null;
-      }
+      unsubscribeProfile?.();
+      unsubscribeProfile = null;
 
       if (!currentUser) {
         setProfile(null);
         return;
       }
 
-      const userRef = doc(db, "users", currentUser.uid);
-
       unsubscribeProfile = onSnapshot(
-        userRef,
+        doc(db, "users", currentUser.uid),
         (snapshot) => {
           if (snapshot.exists()) {
             setProfile(snapshot.data() as ProfileData);
@@ -73,43 +76,50 @@ export default function Navbar() {
         },
         (error) => {
           console.error("Profile listener error:", error);
-
-          setProfile({
-            name: currentUser.displayName || "",
-            email: currentUser.email || "",
-            photoURL: currentUser.photoURL || "",
-            phoneNumber: currentUser.phoneNumber || "",
-          });
         }
       );
     });
 
     return () => {
       unsubscribeAuth();
-
-      if (unsubscribeProfile) {
-        unsubscribeProfile();
-      }
+      unsubscribeProfile?.();
     };
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-
-      setProfileOpen(false);
-      setMenuOpen(false);
-
-      window.location.href = "/";
-    } catch (error) {
-      console.error("Logout error:", error);
-      alert("Could not log out. Please try again.");
-    }
-  };
+  useEffect(() => {
+    setMenuOpen(false);
+    setProfileOpen(false);
+  }, [pathname]);
 
   const closeMenus = () => {
     setMenuOpen(false);
     setProfileOpen(false);
+  };
+
+  const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const search = searchQuery.trim();
+
+    if (!search) {
+      router.push("/products");
+      closeMenus();
+      return;
+    }
+
+    router.push(`/products?search=${encodeURIComponent(search)}`);
+    closeMenus();
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      closeMenus();
+      router.push("/");
+    } catch (error) {
+      console.error("Logout error:", error);
+      alert("Could not log out. Please try again.");
+    }
   };
 
   const displayName =
@@ -125,506 +135,442 @@ export default function Navbar() {
     "";
 
   const firstLetter = displayName.charAt(0).toUpperCase() || "D";
-
   const profilePhoto = profile?.photoURL || user?.photoURL || "";
 
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/";
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
+
+  // Shared profile avatar for desktop and mobile menus.
+  const avatar = (
+    <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#0a3d2e]">
+      {profilePhoto ? (
+        <img
+          src={profilePhoto}
+          alt={displayName}
+          className="h-full w-full origin-top scale-[2] object-cover"
+        />
+      ) : (
+        <span className="text-sm font-black text-[#f2f7dc]">
+          {firstLetter}
+        </span>
+      )}
+    </div>
+  );
+
   return (
-    <nav className="relative z-50 mx-auto w-full max-w-7xl px-3 pt-3 sm:px-5 sm:pt-4 lg:px-8">
-      <div className="rounded-[22px] border border-emerald-950/10 bg-white/90 shadow-[0_15px_50px_rgba(10,61,46,0.09)] backdrop-blur-2xl sm:rounded-[26px]">
+    <>
+      {/* ================= DESKTOP + MOBILE HEADER ================= */}
 
-        {/* ===================================================== */}
-        {/* MAIN NAVBAR */}
-        {/* ===================================================== */}
+      <nav className="relative z-50 mx-auto w-full max-w-7xl px-3 pt-3 sm:px-5 sm:pt-4 lg:px-8">
+        <div className="rounded-[20px] border border-emerald-950/10 bg-white/95 shadow-[0_12px_40px_rgba(10,61,46,0.07)] backdrop-blur-xl sm:rounded-[26px]">
 
-        <div className="flex min-h-[68px] items-center gap-2 px-3 py-2.5 sm:min-h-[76px] sm:gap-4 sm:px-6 sm:py-3">
+          <div className="flex min-h-[62px] items-center gap-2 px-3 py-2 sm:min-h-[76px] sm:gap-4 sm:px-6">
 
-          {/* ================================================= */}
-          {/* LOGO */}
-          {/* ================================================= */}
-
-          <Link
-            href="/"
-            aria-label="DealDone Home"
-            className="group flex min-w-0 shrink-0 items-center gap-2 sm:gap-3"
-            onClick={closeMenus}
-          >
-            {/* Flower mark */}
-            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center sm:h-11 sm:w-11">
-              <div className="absolute inset-0 transition-transform duration-700 group-hover:rotate-90">
-                {[0, 60, 120, 180, 240, 300].map((rotation) => (
-                  <span
-                    key={rotation}
-                    className="absolute left-1/2 top-1/2 h-4.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#d4e84a] sm:h-5"
-                    style={{
-                      transform: `translate(-50%, -50%) rotate(${rotation}deg) translateY(-8px)`,
-                    }}
-                  />
-                ))}
-              </div>
-
-              <div className="relative flex h-7.5 w-7.5 items-center justify-center rounded-full bg-[#0a3d2e] shadow-[0_8px_25px_rgba(10,61,46,0.18)] sm:h-8 sm:w-8">
-                <span className="text-xs font-black text-[#f2f7dc] sm:text-sm">
-                  D
-                </span>
-              </div>
-            </div>
-
-            {/* Brand text */}
-            <div className="hidden min-w-0 sm:block">
-              <h1 className="text-xl font-black tracking-tight text-[#0a3d2e]">
-                Deal<span className="text-emerald-700">Done</span>
-              </h1>
-
-              <p className="whitespace-nowrap text-[9px] font-semibold tracking-[0.18em] text-emerald-950/40">
-                LOCAL MARKETPLACE
-              </p>
-            </div>
-          </Link>
-
-          {/* ================================================= */}
-          {/* DESKTOP NAVIGATION */}
-          {/* ================================================= */}
-
-          <div className="hidden min-w-0 flex-1 items-center justify-center gap-6 lg:flex xl:gap-7">
-            {navItems.map((item, index) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className={`group relative whitespace-nowrap py-2 text-sm transition ${
-                  index === 0
-                    ? "font-bold text-[#0a3d2e]"
-                    : "font-medium text-emerald-950/55 hover:text-[#0a3d2e]"
-                }`}
-              >
-                {item.label}
-
-                {index === 0 && (
-                  <span className="absolute -bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-[#d4e84a]" />
-                )}
-
-                {index !== 0 && (
-                  <span className="absolute -bottom-1 left-1/2 h-0.5 w-0 -translate-x-1/2 rounded-full bg-[#d4e84a] transition-all duration-300 group-hover:w-5" />
-                )}
-              </Link>
-            ))}
-          </div>
-
-          {/* ================================================= */}
-          {/* DESKTOP SEARCH */}
-          {/* ================================================= */}
-
-          <div className="hidden w-[200px] shrink-0 items-center rounded-full border border-emerald-950/10 bg-emerald-950/[0.035] px-4 transition-all duration-300 focus-within:border-emerald-700/30 focus-within:bg-white focus-within:shadow-[0_8px_25px_rgba(10,61,46,0.07)] xl:flex 2xl:w-[220px]">
-            <Search
-              size={17}
-              className="shrink-0 text-emerald-950/35"
-            />
-
-            <input
-              type="text"
-              placeholder="Search deals..."
-              aria-label="Search deals"
-              className="min-w-0 w-full bg-transparent px-3 py-2.5 text-sm text-[#0a3d2e] outline-none placeholder:text-emerald-950/35"
-            />
-          </div>
-
-          {/* ================================================= */}
-          {/* ACTIONS */}
-          {/* ================================================= */}
-
-          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
-
-            {/* LOCATION */}
-
-            <button
-              type="button"
-              title="Location"
-              aria-label="Location"
-              className="hidden h-10 w-10 items-center justify-center rounded-xl border border-emerald-950/10 bg-emerald-950/[0.025] text-emerald-950/60 transition duration-300 hover:-translate-y-0.5 hover:border-emerald-700/20 hover:bg-[#d4e84a]/20 hover:text-[#0a3d2e] md:flex"
-            >
-              <MapPin size={18} />
-            </button>
-
-            {/* SAVED */}
+            {/* LOGO + BRAND NAME */}
 
             <Link
-              href="/saved"
-              title="Saved Products"
-              aria-label="Saved Products"
-              onClick={() => setProfileOpen(false)}
-              className="hidden h-10 w-10 items-center justify-center rounded-xl border border-emerald-950/10 bg-emerald-950/[0.025] text-emerald-950/60 transition duration-300 hover:-translate-y-0.5 hover:border-emerald-700/20 hover:bg-[#d4e84a]/20 hover:text-[#0a3d2e] md:flex"
+              href="/"
+              onClick={closeMenus}
+              aria-label="DealDone Home"
+              className="group flex shrink-0 items-center gap-2 sm:gap-3"
             >
-              <Heart size={18} />
-            </Link>
-
-            {/* NOTIFICATIONS */}
-
-            <button
-              type="button"
-              title="Notifications"
-              aria-label="Notifications"
-              className="hidden h-10 w-10 items-center justify-center rounded-xl border border-emerald-950/10 bg-emerald-950/[0.025] text-emerald-950/60 transition duration-300 hover:-translate-y-0.5 hover:border-emerald-700/20 hover:bg-[#d4e84a]/20 hover:text-[#0a3d2e] md:flex"
-            >
-              <Bell size={18} />
-            </button>
-
-            {/* ================================================= */}
-            {/* USER / LOGIN */}
-            {/* ================================================= */}
-
-            {user ? (
-              <div className="relative hidden md:block">
-                <button
-                  type="button"
-                  onClick={() => setProfileOpen((value) => !value)}
-                  className={`group flex items-center gap-2 rounded-xl border px-2 py-1.5 transition duration-300 ${
-                    profileOpen
-                      ? "border-emerald-700/25 bg-emerald-50"
-                      : "border-emerald-950/10 bg-white hover:-translate-y-0.5 hover:border-emerald-700/20 hover:bg-emerald-50"
-                  }`}
-                  aria-expanded={profileOpen}
-                  aria-label="Open profile menu"
-                >
-                  {/* AVATAR */}
-
-                  <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#0a3d2e]">
-                    {profilePhoto ? (
-                      <img
-                        src={profilePhoto}
-                        alt={displayName}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-xs font-black text-[#f2f7dc]">
-                        {firstLetter}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* NAME */}
-
-                  <div className="hidden max-w-[105px] min-w-0 text-left xl:block">
-                    <p className="truncate text-[11px] font-black text-[#0a3d2e]">
-                      {displayName}
-                    </p>
-
-                    <p className="truncate text-[9px] text-emerald-950/40">
-                      My Profile
-                    </p>
-                  </div>
-
-                  <ArrowUpRight
-                    size={14}
-                    className={`shrink-0 text-emerald-950/35 transition-transform duration-300 ${
-                      profileOpen
-                        ? "-translate-y-0.5 translate-x-0.5"
-                        : ""
-                    }`}
-                  />
-                </button>
-
-                {/* ================================================= */}
-                {/* PROFILE DROPDOWN */}
-                {/* ================================================= */}
-
-                {profileOpen && (
-                  <div className="absolute right-0 top-[calc(100%+10px)] w-[min(280px,calc(100vw-24px))] overflow-hidden rounded-2xl border border-emerald-950/10 bg-white shadow-[0_25px_70px_rgba(10,61,46,0.16)]">
-                    {/* PROFILE HEADER */}
-
-                    <div className="border-b border-emerald-950/10 bg-[#f4f8df] p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#0a3d2e] shadow-sm">
-                          {profilePhoto ? (
-                            <img
-                              src={profilePhoto}
-                              alt={displayName}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <span className="text-base font-black text-[#f2f7dc]">
-                              {firstLetter}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-black text-[#0a3d2e]">
-                            {displayName}
-                          </p>
-
-                          <p className="mt-0.5 truncate text-[10px] text-emerald-950/45">
-                            {displayEmail}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* MENU */}
-
-                    <div className="p-2">
-                      <Link
-                        href="/profile"
-                        onClick={() => setProfileOpen(false)}
-                        className="group flex min-h-[58px] items-center gap-3 rounded-xl px-3 py-3 transition hover:bg-[#d4e84a]/15"
-                      >
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-950/[0.045] text-[#0a3d2e] transition group-hover:bg-[#d4e84a]/30">
-                          <UserRound size={17} />
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-[#0a3d2e]">
-                            My Profile
-                          </p>
-
-                          <p className="mt-0.5 truncate text-[10px] text-emerald-950/40">
-                            View and edit your information
-                          </p>
-                        </div>
-
-                        <ArrowUpRight
-                          size={15}
-                          className="shrink-0 text-emerald-950/30 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-                        />
-                      </Link>
-
-                      <Link
-                        href="/profile/edit"
-                        onClick={() => setProfileOpen(false)}
-                        className="group flex min-h-[58px] items-center gap-3 rounded-xl px-3 py-3 transition hover:bg-[#d4e84a]/15"
-                      >
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-950/[0.045] text-[#0a3d2e] transition group-hover:bg-[#d4e84a]/30">
-                          <Settings size={17} />
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-[#0a3d2e]">
-                            Account Settings
-                          </p>
-
-                          <p className="mt-0.5 truncate text-[10px] text-emerald-950/40">
-                            Manage your account
-                          </p>
-                        </div>
-
-                        <ArrowUpRight
-                          size={15}
-                          className="shrink-0 text-emerald-950/30 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-                        />
-                      </Link>
-
-                      <div className="my-1 border-t border-emerald-950/10" />
-
-                      <button
-                        type="button"
-                        onClick={handleLogout}
-                        className="group flex min-h-[58px] w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-red-50"
-                      >
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-500 transition group-hover:bg-red-100">
-                          <LogOut size={17} />
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-red-600">
-                            Log out
-                          </p>
-
-                          <p className="mt-0.5 truncate text-[10px] text-red-400">
-                            Sign out of DealDone
-                          </p>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <Link
-                href="/auth/login"
-                className="hidden rounded-xl border border-emerald-950/10 bg-white px-4 py-2.5 text-sm font-semibold text-[#0a3d2e] transition duration-300 hover:-translate-y-0.5 hover:border-emerald-700/20 hover:bg-emerald-50 md:block"
-              >
-                Login
-              </Link>
-            )}
-
-            {/* ================================================= */}
-            {/* SELL */}
-            {/* ================================================= */}
-
-            <Link
-              href="/sell"
-              className="group flex h-10 shrink-0 items-center gap-1 rounded-xl bg-[#0a3d2e] px-3 text-xs font-bold text-[#f2f7dc] shadow-[0_8px_25px_rgba(10,61,46,0.18)] transition duration-300 hover:-translate-y-0.5 hover:bg-emerald-900 sm:h-auto sm:gap-1.5 sm:px-4 sm:py-2.5 sm:text-sm"
-            >
-              <span className="hidden min-[380px]:inline">
-                Sell Now
-              </span>
-
-              <span className="min-[380px]:hidden">
-                Sell
-              </span>
-
-              <ArrowUpRight
-                size={15}
-                className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 sm:h-4 sm:w-4"
-              />
-            </Link>
-
-            {/* ================================================= */}
-            {/* MOBILE MENU BUTTON */}
-            {/* ================================================= */}
-
-            <button
-              type="button"
-              aria-label={menuOpen ? "Close menu" : "Open menu"}
-              aria-expanded={menuOpen}
-              onClick={() => {
-                setMenuOpen((value) => !value);
-                setProfileOpen(false);
-              }}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-950/10 bg-emerald-950/[0.025] text-[#0a3d2e] transition duration-300 hover:bg-[#d4e84a]/20 active:scale-95 lg:hidden"
-            >
-              {menuOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
-          </div>
-        </div>
-
-        {/* ===================================================== */}
-        {/* MOBILE MENU */}
-        {/* ===================================================== */}
-
-        {menuOpen && (
-          <div className="border-t border-emerald-950/10 px-3 pb-4 pt-3 sm:px-4 sm:pb-5 sm:pt-4 lg:hidden">
-
-            {/* MOBILE SEARCH */}
-
-            <div className="mb-3 flex min-h-[48px] items-center rounded-2xl border border-emerald-950/10 bg-emerald-950/[0.025] px-3.5 sm:mb-4 sm:px-4">
-              <Search
-                size={17}
-                className="shrink-0 text-emerald-950/35"
-              />
-
-              <input
-                type="text"
-                placeholder="Search deals..."
-                aria-label="Search deals"
-                className="min-w-0 w-full bg-transparent px-3 py-3 text-sm text-[#0a3d2e] outline-none placeholder:text-emerald-950/35"
-              />
-            </div>
-
-            {/* MOBILE PROFILE */}
-
-            {user && (
-              <Link
-                href="/profile"
-                onClick={() => setMenuOpen(false)}
-                className="mb-3 flex min-h-[64px] items-center gap-3 rounded-2xl border border-emerald-950/10 bg-[#f4f8df] p-3 transition active:scale-[0.99]"
-              >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#0a3d2e] shadow-sm">
-                  {profilePhoto ? (
-                    <img
-                      src={profilePhoto}
-                      alt={displayName}
-                      className="h-full w-full object-cover"
+              <div className="relative flex h-9 w-9 shrink-0 items-center justify-center sm:h-11 sm:w-11">
+                <div className="absolute inset-0 transition-transform duration-700 group-hover:rotate-90">
+                  {[0, 60, 120, 180, 240, 300].map((rotation) => (
+                    <span
+                      key={rotation}
+                      className="absolute left-1/2 top-1/2 h-4 w-2.5 rounded-full bg-[#d4e84a]"
+                      style={{
+                        transform: `translate(-50%, -50%) rotate(${rotation}deg) translateY(-8px)`,
+                      }}
                     />
-                  ) : (
-                    <span className="text-base font-black text-[#f2f7dc]">
-                      {firstLetter}
-                    </span>
-                  )}
+                  ))}
                 </div>
 
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-black text-[#0a3d2e]">
-                    {displayName}
-                  </p>
-
-                  <p className="mt-0.5 truncate text-[10px] text-emerald-950/45">
-                    View my profile
-                  </p>
+                <div className="relative flex h-7 w-7 items-center justify-center rounded-full bg-[#0a3d2e] sm:h-8 sm:w-8">
+                  <span className="text-xs font-black text-[#f2f7dc]">
+                    D
+                  </span>
                 </div>
+              </div>
 
-                <ArrowUpRight
-                  size={17}
-                  className="shrink-0 text-emerald-950/40"
-                />
-              </Link>
-            )}
+              {/* Brand name visible on mobile */}
 
-            {/* MOBILE NAV LINKS */}
+              <div className="block min-w-0">
+                <h1 className="whitespace-nowrap text-[15px] font-black tracking-tight text-[#0a3d2e] sm:text-xl">
+                  Deal<span className="text-emerald-700">Done</span>
+                </h1>
 
-            <div className="space-y-1">
+                <p className="hidden text-[9px] font-semibold tracking-[0.18em] text-emerald-950/40 sm:block">
+                  LOCAL MARKETPLACE
+                </p>
+              </div>
+            </Link>
+
+            {/* DESKTOP LINKS */}
+
+            <div className="hidden flex-1 items-center justify-center gap-6 lg:flex">
               {navItems.map((item) => (
                 <Link
                   key={item.label}
                   href={item.href}
-                  onClick={() => setMenuOpen(false)}
-                  className="flex min-h-[48px] items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold text-emerald-950/65 transition hover:bg-[#d4e84a]/15 hover:text-[#0a3d2e] active:scale-[0.99]"
+                  className={`relative whitespace-nowrap py-2 text-sm font-medium transition ${
+                    isActive(item.href)
+                      ? "font-bold text-[#0a3d2e]"
+                      : "text-emerald-950/55 hover:text-[#0a3d2e]"
+                  }`}
                 >
-                  <span>{item.label}</span>
+                  {item.label}
 
-                  <ArrowUpRight size={16} className="shrink-0" />
+                  {isActive(item.href) && (
+                    <span className="absolute -bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-[#d4e84a]" />
+                  )}
                 </Link>
               ))}
+            </div>
 
-              {/* SAVED */}
+            {/* DESKTOP SEARCH */}
+
+            <form
+              onSubmit={handleSearch}
+              className="hidden w-[190px] shrink-0 items-center rounded-full border border-emerald-950/10 bg-emerald-950/[0.035] px-3 xl:flex 2xl:w-[220px]"
+            >
+              <Search
+                size={16}
+                className="shrink-0 text-emerald-950/35"
+              />
+
+              <input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search products..."
+                aria-label="Search products"
+                className="min-w-0 w-full bg-transparent px-2 py-2.5 text-sm text-[#0a3d2e] outline-none placeholder:text-emerald-950/35"
+              />
+            </form>
+
+            {/* RIGHT ACTIONS */}
+
+            <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+
+              {/* DESKTOP SAVED */}
 
               <Link
                 href="/saved"
-                onClick={() => setMenuOpen(false)}
-                className="flex min-h-[48px] items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold text-emerald-950/65 transition hover:bg-[#d4e84a]/15 hover:text-[#0a3d2e] active:scale-[0.99]"
+                title="Saved Products"
+                className="hidden h-10 w-10 items-center justify-center rounded-xl border border-emerald-950/10 text-emerald-950/60 transition hover:bg-[#d4e84a]/20 md:flex"
               >
-                <span>Saved Products</span>
-
-                <Heart size={16} className="shrink-0" />
+                <Heart size={18} />
               </Link>
 
-              {/* PROFILE / LOGIN */}
+              {/* DESKTOP PROFILE */}
+
+              {user ? (
+                <div className="relative hidden md:block">
+                  <button
+                    type="button"
+                    onClick={() => setProfileOpen((value) => !value)}
+                    aria-expanded={profileOpen}
+                    className="flex items-center gap-2 rounded-xl border border-emerald-950/10 bg-white p-1.5 transition hover:bg-emerald-50"
+                  >
+                    {avatar}
+
+                    <div className="hidden max-w-[100px] text-left xl:block">
+                      <p className="truncate text-[11px] font-black text-[#0a3d2e]">
+                        {displayName}
+                      </p>
+                      <p className="text-[9px] text-emerald-950/40">
+                        My Profile
+                      </p>
+                    </div>
+                  </button>
+
+                  {profileOpen && (
+                    <div className="absolute right-0 top-[calc(100%+10px)] w-[270px] overflow-hidden rounded-2xl border border-emerald-950/10 bg-white shadow-xl">
+                      <div className="flex items-center gap-3 bg-[#f4f8df] p-4">
+                        {avatar}
+
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-black text-[#0a3d2e]">
+                            {displayName}
+                          </p>
+                          <p className="truncate text-xs text-emerald-950/45">
+                            {displayEmail}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="p-2">
+                        <Link
+                          href="/profile"
+                          onClick={closeMenus}
+                          className="flex items-center gap-3 rounded-xl p-3 text-sm font-medium text-[#0a3d2e] hover:bg-emerald-50"
+                        >
+                          <UserRound size={17} />
+                          My Profile
+                        </Link>
+
+                        <Link
+                          href="/profile/edit"
+                          onClick={closeMenus}
+                          className="flex items-center gap-3 rounded-xl p-3 text-sm font-medium text-[#0a3d2e] hover:bg-emerald-50"
+                        >
+                          <Settings size={17} />
+                          Account Settings
+                        </Link>
+
+                        <button
+                          type="button"
+                          onClick={handleLogout}
+                          className="flex w-full items-center gap-3 rounded-xl p-3 text-left text-sm font-medium text-red-600 hover:bg-red-50"
+                        >
+                          <LogOut size={17} />
+                          Log out
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link
+                  href="/auth/login"
+                  className="hidden rounded-xl border border-emerald-950/10 px-4 py-2.5 text-sm font-semibold text-[#0a3d2e] hover:bg-emerald-50 md:block"
+                >
+                  Login
+                </Link>
+              )}
+
+              {/* SELL BUTTON */}
+
+              <Link
+                href="/sell"
+                className="flex h-10 items-center gap-1.5 rounded-xl bg-[#0a3d2e] px-3 text-xs font-bold text-[#f2f7dc] transition hover:bg-emerald-900 sm:px-4 sm:text-sm"
+              >
+                <Plus size={16} />
+
+                <span className="hidden min-[380px]:inline">
+                  Sell Now
+                </span>
+
+                <span className="min-[380px]:hidden">
+                  Sell
+                </span>
+              </Link>
+
+              {/* MOBILE MENU */}
+
+              <button
+                type="button"
+                aria-label={menuOpen ? "Close menu" : "Open menu"}
+                aria-expanded={menuOpen}
+                onClick={() => {
+                  setMenuOpen((value) => !value);
+                  setProfileOpen(false);
+                }}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-950/10 text-[#0a3d2e] lg:hidden"
+              >
+                {menuOpen ? <X size={20} /> : <Menu size={20} />}
+              </button>
+            </div>
+          </div>
+
+          {/* MOBILE MENU */}
+
+          {menuOpen && (
+            <div className="border-t border-emerald-950/10 px-3 pb-4 pt-3 lg:hidden">
+
+              <form
+                onSubmit={handleSearch}
+                className="mb-3 flex min-h-12 items-center rounded-xl border border-emerald-950/10 bg-emerald-950/[0.025] px-3"
+              >
+                <Search
+                  size={17}
+                  className="shrink-0 text-emerald-950/40"
+                />
+
+                <input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search products..."
+                  aria-label="Search products"
+                  className="min-w-0 w-full bg-transparent px-3 py-3 text-sm outline-none"
+                />
+              </form>
+
+              {user && (
+                <Link
+                  href="/profile"
+                  onClick={closeMenus}
+                  className="mb-3 flex items-center gap-3 rounded-xl bg-[#f4f8df] p-3"
+                >
+                  {avatar}
+
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-[#0a3d2e]">
+                      {displayName}
+                    </p>
+                    <p className="text-xs text-emerald-950/45">
+                      My Profile
+                    </p>
+                  </div>
+
+                  <ArrowUpRight size={16} className="ml-auto" />
+                </Link>
+              )}
+
+              {navItems.map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  onClick={closeMenus}
+                  className="flex min-h-12 items-center justify-between rounded-xl px-4 text-sm font-semibold text-emerald-950/65 hover:bg-emerald-50"
+                >
+                  {item.label}
+                  <ArrowUpRight size={16} />
+                </Link>
+              ))}
+
+              <Link
+                href="/saved"
+                onClick={closeMenus}
+                className="flex min-h-12 items-center justify-between rounded-xl px-4 text-sm font-semibold text-emerald-950/65 hover:bg-emerald-50"
+              >
+                Saved Products
+                <Heart size={16} />
+              </Link>
 
               {user ? (
                 <>
                   <Link
-                    href="/profile"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex min-h-[48px] items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold text-emerald-950/65 transition hover:bg-[#d4e84a]/15 hover:text-[#0a3d2e] active:scale-[0.99]"
-                  >
-                    <span>My Profile</span>
-
-                    <UserRound size={16} className="shrink-0" />
-                  </Link>
-
-                  <Link
                     href="/profile/edit"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex min-h-[48px] items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold text-emerald-950/65 transition hover:bg-[#d4e84a]/15 hover:text-[#0a3d2e] active:scale-[0.99]"
+                    onClick={closeMenus}
+                    className="flex min-h-12 items-center justify-between rounded-xl px-4 text-sm font-semibold text-emerald-950/65 hover:bg-emerald-50"
                   >
-                    <span>Account Settings</span>
-
-                    <Settings size={16} className="shrink-0" />
+                    Account Settings
+                    <Settings size={16} />
                   </Link>
 
                   <button
                     type="button"
                     onClick={handleLogout}
-                    className="flex min-h-[48px] w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-semibold text-red-500 transition hover:bg-red-50 active:scale-[0.99]"
+                    className="flex min-h-12 w-full items-center justify-between rounded-xl px-4 text-left text-sm font-semibold text-red-600 hover:bg-red-50"
                   >
-                    <span>Log out</span>
-
-                    <LogOut size={16} className="shrink-0" />
+                    Log out
+                    <LogOut size={16} />
                   </button>
                 </>
               ) : (
                 <Link
                   href="/auth/login"
-                  onClick={() => setMenuOpen(false)}
-                  className="flex min-h-[48px] items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold text-emerald-950/65 transition hover:bg-[#d4e84a]/15 hover:text-[#0a3d2e] active:scale-[0.99]"
+                  onClick={closeMenus}
+                  className="flex min-h-12 items-center justify-between rounded-xl px-4 text-sm font-semibold text-emerald-950/65 hover:bg-emerald-50"
                 >
-                  <span>Login</span>
-
-                  <ArrowUpRight size={16} className="shrink-0" />
+                  Login
+                  <ArrowUpRight size={16} />
                 </Link>
               )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      </nav>
+
+      {/* ================= MOBILE BOTTOM NAVIGATION ================= */}
+
+      <div className="fixed inset-x-0 bottom-0 z-[60] px-3 pb-[max(10px,env(safe-area-inset-bottom))] lg:hidden">
+        <div className="mx-auto grid max-w-md grid-cols-4 rounded-[22px] border border-emerald-950/10 bg-white/95 p-2 shadow-[0_-8px_35px_rgba(10,61,46,0.10)] backdrop-blur-2xl">
+
+          {/* HOME */}
+
+          <Link
+            href="/"
+            className={`flex min-h-[55px] flex-col items-center justify-center gap-1 rounded-2xl transition ${
+              isActive("/")
+                ? "bg-[#f2f7dc] text-[#0a3d2e]"
+                : "text-emerald-950/45"
+            }`}
+          >
+            <Home
+              size={20}
+              strokeWidth={isActive("/") ? 2.5 : 1.8}
+            />
+
+            <span className="text-[10px] font-semibold">
+              Home
+            </span>
+          </Link>
+
+          {/* EXPLORE */}
+
+          <Link
+            href="/products"
+            className={`flex min-h-[55px] flex-col items-center justify-center gap-1 rounded-2xl transition ${
+              isActive("/products")
+                ? "bg-[#f2f7dc] text-[#0a3d2e]"
+                : "text-emerald-950/45"
+            }`}
+          >
+            <PackageSearch
+              size={20}
+              strokeWidth={isActive("/products") ? 2.5 : 1.8}
+            />
+
+            <span className="text-[10px] font-semibold">
+              Explore
+            </span>
+          </Link>
+
+          {/* SAVED */}
+
+          <Link
+            href="/saved"
+            className={`flex min-h-[55px] flex-col items-center justify-center gap-1 rounded-2xl transition ${
+              isActive("/saved")
+                ? "bg-[#f2f7dc] text-[#0a3d2e]"
+                : "text-emerald-950/45"
+            }`}
+          >
+            <Heart
+              size={20}
+              strokeWidth={isActive("/saved") ? 2.5 : 1.8}
+            />
+
+            <span className="text-[10px] font-semibold">
+              Saved
+            </span>
+          </Link>
+
+          {/* PROFILE */}
+
+          <Link
+            href={user ? "/profile" : "/auth/login"}
+            className={`flex min-h-[55px] flex-col items-center justify-center gap-1 rounded-2xl transition ${
+              isActive("/profile") || isActive("/auth")
+                ? "bg-[#f2f7dc] text-[#0a3d2e]"
+                : "text-emerald-950/45"
+            }`}
+          >
+            {/* Perfect circular profile image */}
+
+            {user && profilePhoto ? (
+              <div className="h-6 w-6 shrink-0 overflow-hidden rounded-full border border-emerald-950/10 bg-[#0a3d2e]">
+                <img
+                  src={profilePhoto}
+                  alt={displayName}
+                  className="block h-full w-full origin-top scale-[2] rounded-full object-cover"
+                />
+              </div>
+            ) : (
+              <UserRound size={20} strokeWidth={1.8} />
+            )}
+
+            <span className="text-[10px] font-semibold">
+              {user ? "Profile" : "Login"}
+            </span>
+          </Link>
+        </div>
       </div>
-    </nav>
+    </>
   );
 }
